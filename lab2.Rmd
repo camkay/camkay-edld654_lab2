@@ -29,7 +29,13 @@ data <- rio::import(here::here("data", "train.csv"))
 Set a seed and split the data into a training set and a testing set as two named objects. 
 
 ```{r, initial_split}
+set.seed(42)
 
+data_split <- initial_split(data)
+
+data_train <- training(data_split)
+  
+data_test  <- testing(data_split)
 
 ```
 
@@ -38,8 +44,9 @@ Set a seed and split the data into a training set and a testing set as two named
 Set a seed and use 10-fold cross-validation to resample the traning data.
 
 ```{r, resample}
+set.seed(42)
 
-
+data_train_r10 <- vfold_cv(data_train)
 ```
 
 ## 3. Preprocess
