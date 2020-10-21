@@ -20,8 +20,7 @@ library(tidymodels)
 ## Read in the `train.csv` data. Please feel free to use `sample_frac()` if you find that the data file is too large for your machine.
 
 ```{r, data}
-
-
+data <- rio::import(here::here("data", "train.csv"))
 ```
 
 
