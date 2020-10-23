@@ -1,6 +1,6 @@
 ---
 title: "EDLD654 - Lab 2"
-author: "Lea Frank, Stephanie Gluck, Cameron Kay, & Ashley Miller"
+author: "Ashley Miller, Lea Frank, Stephanie Gluck, & Cameron Kay"
 date: "10/21/2020"
 output:
   html_document:
@@ -24,15 +24,17 @@ options(scipen = 999)
 ## Read in the `train.csv` data. Please feel free to use `sample_frac()` if you find that the data file is too large for your machine.
 
 ```{r, data}
-data <- rio::import(here::here("data", "train.csv"))
-```
 
+data <- rio::import(here::here("data", "train.csv"))
+
+```
 
 ## 1. Initial Split
 
 Set a seed and split the data into a training set and a testing set as two named objects. 
 
 ```{r, initial_split}
+
 set.seed(42)
 
 data_split <- initial_split(data)
@@ -48,6 +50,7 @@ data_test  <- testing(data_split)
 Set a seed and use 10-fold cross-validation to resample the traning data.
 
 ```{r, resample}
+
 set.seed(42)
 
 data_train_r10 <- vfold_cv(data_train)
@@ -66,13 +69,14 @@ Complete the code maze below by filling in the blanks (____) to create a recipe 
 
 lasso4_rec <- 
   recipe(
+    #predicting test scores w/ gender, ethnicity, grade level, and student eligibility for free/reduced lunch
     formula = score ~ gndr + ethnic_cd + enrl_grd + econ_dsvntg, 
-    data = data_train #use your training set here
+    data = data_train #use training set here
   ) %>%
-  step_naomit(everything(), skip = TRUE) %>% 
-  step_string2factor(gndr, ethnic_cd, econ_dsvntg) %>%  #may not need, depending on your formula
+  step_naomit(everything(), skip = TRUE) %>% #omits missing data in predictors
+  step_string2factor(gndr, ethnic_cd, econ_dsvntg) %>%  #converts character strings to factors
   step_dummy(gndr, ethnic_cd, econ_dsvntg) %>% #may not need, depending on your formula
-  step_normalize(enrl_grd) #may not need, depending on your formula
+  step_normalize(enrl_grd) #center and scale numeric predictor
 
 ```
 
@@ -85,8 +89,8 @@ Create a `{parsnip}` lasso model where the penalty hyperparameter is set to be t
 mod_lasso <- linear_reg() %>%
   set_engine("glmnet") %>% 
   set_mode("regression") %>% # redundant; just getting in the habit
-  set_args(penalty = tune(), 
-           mixture = 1)
+  set_args(penalty = tune(), # hyperparameter to be tuned
+           mixture = 1) # this is what makes it a lasso model
 
 ```
 
@@ -99,7 +103,7 @@ Complete the code maze below to fit a tuned lasso model.
 lasso_grid <- grid_regular(penalty())
 
 lasso4_fit_1 <- tune_grid(
-  mod_lasso,
+  object = mod_lasso,
   preprocessor = lasso4_rec,
   resamples = data_train_r10,
   grid = lasso_grid,
@@ -110,9 +114,8 @@ lasso4_fit_1 <- tune_grid(
 ```
 
 ### Question A
-  + How many models were fit to each fold of `lasso4_fit_1`? (Please provide a numeric answer, *and* use code to corroborate your answer.)
-  
-  Since there are 3 penalty values being tested, 3 models will be fitted to each fold.
+  + How many models were fit to each fold of `lasso4_fit_1`? (Please provide a numeric answer, *and* use code to corroborate your answer.) 
+    + Since there are 3 penalty values being tested, 3 models were fitted to each fold.
   
 ```{r}
 
@@ -138,7 +141,7 @@ Use your code from (5) above to complete the code maze below to fit a second tun
 ```{r, lasso_fit_2}
 
 lasso4_fit_2 <- tune_grid(
-  mod_lasso,
+  object = mod_lasso,
   preprocessor = lasso4_rec,
   resamples = data_train_r10,
   control = tune::control_resamples(verbose = TRUE,
@@ -150,8 +153,7 @@ lasso4_fit_2 <- tune_grid(
 ### Question B
 
   + How many models were fit to each fold of `lasso4_fit_2`? (Please provide a numeric answer, *and* use code to corroborate your answer.)
-  
-    10 
+    + 10 models
 
 ```{r}
 
@@ -163,8 +165,7 @@ lasso4_fit_2 %>%
 ```
 
   + If this is different than the number of models of `lasso4_fit_1`, please explain why.
-  
-  Yes,
+    + Yes, the number of models ran was different between models. This is because `lasso4_fit_1` specified a data frame with three possible tuning combinations as an argument to `grid` within the `tune_grid()` function. On the other hand, `lasso4_fit_2` used the default setting, which is ten
 
   + Use code to list the different values of `penalty()` that were used for *lasso4_fit_2*.
 
@@ -174,6 +175,7 @@ lasso4_fit_2 %>%
   collect_metrics(summarize = FALSE) %$%
   unique(penalty)
 
+# an alternative approach:
 # unique(collect_metrics(lasso4_fit_2, summarize = FALSE)$penalty)
 
 ```
@@ -182,19 +184,23 @@ lasso4_fit_2 %>%
 
 ```{r, lasso8}
 
+# create new recipe:
 lasso7_rec <- 
   recipe(
+    # predicting test scores w/ gender, ethnicity, grade level, student eligibility for free/reduced lunch,
+    # as well as school latitude, school longitude, and whether the student received special ed services & was     # enrolled in general ed less than 40% of the time
     formula = score ~ gndr + ethnic_cd + enrl_grd + econ_dsvntg + lat + lon + dist_sped, 
-    data = data_train #training dataset goes here
+    data = data_train #training data-set
   ) %>%
   step_naomit(everything(), skip = TRUE) %>% 
-  step_string2factor(gndr, ethnic_cd, econ_dsvntg, dist_sped) %>%  #may not need, depending on your formula
-  step_dummy(gndr, ethnic_cd, econ_dsvntg, dist_sped) %>% #may not need, depending on your formula
-  step_normalize(enrl_grd, lat, lon)
+  step_string2factor(gndr, ethnic_cd, econ_dsvntg, dist_sped) %>%  # convert character strings to factors
+  step_dummy(gndr, ethnic_cd, econ_dsvntg, dist_sped) %>%  #dummy code said variables^
+  step_normalize(enrl_grd, lat, lon) #center and standardize numeric variables
 
+# fit new lasso model with 7 predictors
 lasso7_fit_2 <- tune_grid(
-  mod_lasso,
-  preprocessor = lasso7_rec,
+  object = mod_lasso, # specifying same lasso object where the penalty is set to be tuned.
+  preprocessor = lasso7_rec, #using new recipe
   resamples = data_train_r10,
   control = tune::control_resamples(verbose = TRUE,
                                     save_pred = TRUE)
@@ -225,38 +231,43 @@ Our model with 7 predictors is the best fitting model, yielding an rmse of 99.3 
 ```{r}
 
 enet_params <- parameters(penalty(), mixture())
-enet_grid <- grid_regular(enet_params, levels = c(10, 5)) #want 10 different values of penalty and 5 for mixture
-#50 models per fold = 500 models total!
+enet_grid <- grid_regular(enet_params, levels = c(10, 5)) #want 10 different values of penalty and 5 for mixture => 50 models per fold = 500 models total!
 
-options(scipen = 999) #turns off scientific notation
+# alternative, more efficient approach:
+# enet_grid <- grid_regular(parameters(penalty(), mixture()), levels = c(10, 5))
+
+# sanity check:
 unique(enet_grid$penalty) #10 unique values for penalty
 unique(enet_grid$mixture) #5 unique values for mixture
 
-
-enet7_tune_rec <- linear_reg() %>%
+mod_enet7 <- linear_reg() %>%
   set_engine("glmnet") %>% 
   set_mode("regression") %>%
   set_args(penalty = tune(), #placeholder for tuned penalty
            mixture = tune()) #placeholder for tuned mixture
 
-enet7_tune_fit1 <- tune_grid(
-  object = enet7_tune_rec,
+enet7_fit1 <- tune_grid(
+  object = mod_enet7,
   preprocessor = lasso7_rec,
   resamples = data_train_r10,
   grid = enet_grid, #grid object specified above
-#  metrics = yardstick::metric_set(rmse),
   control = tune::control_resamples(verbose = TRUE,
-                                    save_pred = TRUE)
-)
+                                    save_pred = TRUE))
+
+lasso7_fit_2 %>%
+  show_best(metric = "rmse", n = 1) 
 
 lasso7_fit_2 %>%
   show_best(metric = "rmse", n = 1) %$%
   print(mean)
 
-enet7_tune_fit1 %>%
+enet7_fit1 %>%
+  show_best(metric = "rmse", n = 1)
+
+enet7_fit1 %>%
   show_best(metric = "rmse", n = 1) %$%
   print(mean)
 
 ```
 
-The elastic net model barely improves model fit (rmse difference is 0.00008). 
+While the elastic net model improves model fit, the improvement is extremely small (rmse difference is 0.00008) and comes at the expense of model parsimony/computing power. As such, we do not believe the L2 term associated with the use of the elastic net model merits inclusion; hence we would opt for `lasso7_fit_2`.
