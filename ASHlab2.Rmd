@@ -69,14 +69,15 @@ Complete the code maze below by filling in the blanks (____) to create a recipe 
 
 lasso4_rec <- 
   recipe(
-    #predicting test scores w/ gender, ethnicity, grade level, and student eligibility for free/reduced lunch
+    # define outcome: test scores
+    # define predictors: gender, ethnicity, grade level, and student eligibility for free/reduced lunch
     formula = score ~ gndr + ethnic_cd + enrl_grd + econ_dsvntg, 
-    data = data_train #use training set here
+    data = data_train # use training set here
   ) %>%
-  step_naomit(everything(), skip = TRUE) %>% #omits missing data in predictors
-  step_string2factor(gndr, ethnic_cd, econ_dsvntg) %>%  #converts character strings to factors
-  step_dummy(gndr, ethnic_cd, econ_dsvntg) %>% #may not need, depending on your formula
-  step_normalize(enrl_grd) #center and scale numeric predictor
+  step_naomit(everything(), skip = TRUE) %>% # omit missing data in predictors
+  step_string2factor(gndr, ethnic_cd, econ_dsvntg) %>%  # convert character strings to factors
+  step_dummy(gndr, ethnic_cd, econ_dsvntg) %>% # convert nominal data into dummy variables
+  step_normalize(enrl_grd) # center and scale numeric predictor
 
 ```
 
@@ -86,11 +87,12 @@ Create a `{parsnip}` lasso model where the penalty hyperparameter is set to be t
 
 ```{r, lasso}
 
-mod_lasso <- linear_reg() %>%
-  set_engine("glmnet") %>% 
-  set_mode("regression") %>% # redundant; just getting in the habit
-  set_args(penalty = tune(), # hyperparameter to be tuned
-           mixture = 1) # this is what makes it a lasso model
+# specifying the model
+mod_lasso <- linear_reg() %>% # using the model for linear regression that allows for penalized regression
+  set_engine("glmnet") %>% # setting the engine
+  set_mode("regression") %>% # specifying the outcome (regression of classification); redundant w/ above
+  set_args(penalty = tune(), # hyper-parameter to be tuned
+           mixture = 1) # this is what makes it a lasso model (completely L1)
 
 ```
 
@@ -100,7 +102,10 @@ Complete the code maze below to fit a tuned lasso model.
 
 ```{r, lasso_fit_1}
 
+# use a grid search with predefined (default) values to find the optimal tuning parameter values for penalty
 lasso_grid <- grid_regular(penalty())
+
+unique(lasso_grid$penalty) # 3 unique values for penalty
 
 lasso4_fit_1 <- tune_grid(
   object = mod_lasso,
@@ -108,8 +113,7 @@ lasso4_fit_1 <- tune_grid(
   resamples = data_train_r10,
   grid = lasso_grid,
   control = tune::control_resamples(verbose = TRUE,
-                                    save_pred = TRUE)
-)
+                                    save_pred = TRUE))
 
 ```
 
@@ -129,6 +133,8 @@ lasso4_fit_1 %>%
   + Use code to list the different values of `penalty()` that were used.
 
 ```{r}
+
+#unique(lasso_grid$penalty)
 
 lasso_grid
 
@@ -184,27 +190,27 @@ lasso4_fit_2 %>%
 
 ```{r, lasso8}
 
-# create new recipe:
+# create new recipe for model with 7 predictors:
 lasso7_rec <- 
   recipe(
-    # predicting test scores w/ gender, ethnicity, grade level, student eligibility for free/reduced lunch,
+    # define outcome: test scores
+    # define predictors: gender, ethnicity, grade level, and student eligibility for free/reduced lunch
     # as well as school latitude, school longitude, and whether the student received special ed services & was     # enrolled in general ed less than 40% of the time
     formula = score ~ gndr + ethnic_cd + enrl_grd + econ_dsvntg + lat + lon + dist_sped, 
-    data = data_train #training data-set
+    data = data_train 
   ) %>%
   step_naomit(everything(), skip = TRUE) %>% 
-  step_string2factor(gndr, ethnic_cd, econ_dsvntg, dist_sped) %>%  # convert character strings to factors
-  step_dummy(gndr, ethnic_cd, econ_dsvntg, dist_sped) %>%  #dummy code said variables^
-  step_normalize(enrl_grd, lat, lon) #center and standardize numeric variables
+  step_string2factor(gndr, ethnic_cd, econ_dsvntg, dist_sped) %>% 
+  step_dummy(gndr, ethnic_cd, econ_dsvntg, dist_sped) %>%  
+  step_normalize(enrl_grd, lat, lon) 
 
-# fit new lasso model with 7 predictors
+# fit multiple lasso model with 7 predictors
 lasso7_fit_2 <- tune_grid(
-  object = mod_lasso, # specifying same lasso object where the penalty is set to be tuned.
-  preprocessor = lasso7_rec, #using new recipe
-  resamples = data_train_r10,
-  control = tune::control_resamples(verbose = TRUE,
-                                    save_pred = TRUE)
-)
+  object = mod_lasso, # specifying same lasso model object where the penalty is set to be tuned.
+  preprocessor = lasso7_rec, # using new recipe that contains model formula
+  resamples = data_train_r10, # our resample set created via cv_splits
+  control = tune::control_resamples(verbose = TRUE, # will print to console model fitting process by fold
+                                    save_pred = TRUE)) # will save analysis predictions for each model
 
 ```
 
@@ -231,7 +237,10 @@ Our model with 7 predictors is the best fitting model, yielding an rmse of 99.3 
 ```{r}
 
 enet_params <- parameters(penalty(), mixture())
-enet_grid <- grid_regular(enet_params, levels = c(10, 5)) #want 10 different values of penalty and 5 for mixture => 50 models per fold = 500 models total!
+
+# use a grid search with predefined values to find the optimal tuning parameter values
+# want 10 different values of penalty and 5 for mixture => 50 models per fold = 500 models total!
+enet_grid <- grid_regular(enet_params, levels = c(10, 5)) 
 
 # alternative, more efficient approach:
 # enet_grid <- grid_regular(parameters(penalty(), mixture()), levels = c(10, 5))
@@ -240,17 +249,19 @@ enet_grid <- grid_regular(enet_params, levels = c(10, 5)) #want 10 different val
 unique(enet_grid$penalty) #10 unique values for penalty
 unique(enet_grid$mixture) #5 unique values for mixture
 
+# specify the new, tuned elastic net model:
 mod_enet7 <- linear_reg() %>%
   set_engine("glmnet") %>% 
   set_mode("regression") %>%
   set_args(penalty = tune(), #placeholder for tuned penalty
-           mixture = tune()) #placeholder for tuned mixture
+           mixture = tune()) #placeholder for tuned mixture; combines L1 (lasso) and L2 (ridge) penalty
 
-enet7_fit1 <- tune_grid(
-  object = mod_enet7,
-  preprocessor = lasso7_rec,
-  resamples = data_train_r10,
-  grid = enet_grid, #grid object specified above
+# fit tuned elastic net model with tune_grid()
+enet7_fit1 <- tune_grid( # performs grid search for best combo of tuned hyper-parameters
+  object = mod_enet7, # specify elastic net model object
+  preprocessor = lasso7_rec, # same recipe (model formula) used for lasso 7 predictor model
+  resamples = data_train_r10, # same resample set created via cv_splits
+  grid = enet_grid, # our data frame of tuning combinations
   control = tune::control_resamples(verbose = TRUE,
                                     save_pred = TRUE))
 
