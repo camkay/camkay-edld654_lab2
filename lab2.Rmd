@@ -11,7 +11,7 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
 
 # set scipen
 options(scipen = 999)
@@ -201,7 +201,7 @@ lasso7_fit_1 %>%
   show_best(metric = "rmse", n = 1)
 ```
 
-Our 7-predictor model with a penalty of `r show_best(lasso7_fit_1, metric = "rmse", n = 1)[1, "penalty"]` was the best. 
+Our 7-predictor model with a penalty of `r as.character(show_best(lasso7_fit_1, metric = "rmse", n = 1)[1, "penalty"])` was the best. 
 
 ## 9. Fit a tuned elastic net model with the same predictors from (7). 
   + Create a new `{parsnip}` elastic net model
@@ -241,4 +241,4 @@ en7_fit_1 %>%
   print(mean)
 ```
 
-Since the improved fit is very small (i.e., .0001), we do not believe the L2 term merits inclusion. In other words, we are getting a slightly better fit, but we are sacrificing model parsimony. As such, we would opt for `lasso7_fit_1`.
+Since the improved fit is very small (i.e., .0001), we do not believe the L2 term merits inclusion. In other words, we are getting a slightly better fit, but we are sacrificing model parsimony. As such, we would opt for our 7-predictor lasso model with a penalty of `r as.character(show_best(lasso7_fit_1, metric = "rmse", n = 1)[1, "penalty"])`. 
