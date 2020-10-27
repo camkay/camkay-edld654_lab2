@@ -107,7 +107,7 @@ lasso_grid <- grid_regular(penalty())
 
 unique(lasso_grid$penalty) # 3 unique values for penalty
 
-lasso4_fit_1 <- tune_grid(
+lasso4_fit_1 <- tune_grid( # performs grid search for best tuned hyper-parameters
   object = mod_lasso,
   preprocessor = lasso4_rec,
   resamples = data_train_r10,
@@ -150,7 +150,7 @@ lasso4_fit_2 <- tune_grid(
   object = mod_lasso, # same parsnip model as fit1
   preprocessor = lasso4_rec, # same recipe as fit1
   resamples = data_train_r10, # same re-sampled object as fit1
-  control = tune::control_resamples(verbose = FALSE, # turning off for knitted doc
+  control = tune::control_resamples(verbose = FALSE, 
                                     save_pred = TRUE))
 
 ```
@@ -208,8 +208,8 @@ lasso7_rec <-
 lasso7_fit_2 <- tune_grid(
   object = mod_lasso, # specifying same lasso model object where the penalty is set to be tuned
   preprocessor = lasso7_rec, # using new recipe that contains model formula
-  resamples = data_train_r10, # our resample set created via cv_splits
-  control = tune::control_resamples(verbose = FALSE, # turn off for knitted doc
+  resamples = data_train_r10, 
+  control = tune::control_resamples(verbose = FALSE, 
                                     save_pred = TRUE))
 ```
 
@@ -264,13 +264,12 @@ mod_enet7 <- linear_reg() %>%
   + Use the same recipe from (7) above
   
 ```{r elestic_rec}
-# fit tuned elastic net model with tune_grid()
-enet7_fit1 <- tune_grid( # performs grid search for best combo of tuned hyper-parameters
+enet7_fit1 <- tune_grid(
   object = mod_enet7, # specify elastic net model object
   preprocessor = lasso7_rec, # same recipe (model formula) used for lasso 7 predictor model
   resamples = data_train_r10, # same resample set created via cv_splits
   grid = enet_grid, # our data frame of tuning combinations
-  control = tune::control_resamples(verbose = FALSE, # turn off for knitted doc
+  control = tune::control_resamples(verbose = FALSE,
                                     save_pred = TRUE))
 ```
   
@@ -298,8 +297,8 @@ enet7_fit1 %>%
 
 lasso7_fit_2 %>%
   show_best(metric = "rmse", n = 1) %$%
-  print(penalty) # penalty value for best lasso model
+  print(penalty)
 
 ```
 
-While the elastic net model improves model fit, the improvement is extremely small (rmse difference is 0.00008) and comes at the expense of model parsimony/computing power. As such, we do not believe the L2 term associated with the use of the elastic net model merits inclusion; hence we would opt for `lasso7_fit_2` as our final model. In terms of the best hyper-parameter for our model, `lasso7_fit_2` used penalty = `0.0000000001785638`. This value is extremely close to zero, so our tuned lasso model is essentially operating as an OLS regression.
+While the elastic net model improves model fit, the improvement is extremely small (rmse difference is 0.0001) and comes at the expense of model parsimony/computing power. As such, we do not believe the L2 term associated with the use of the elastic net model merits inclusion; hence we would opt for the 7 predictor lasso model with a penalty of `0.0000000001785638`. This value is extremely close to zero, so our tuned lasso model is essentially operating as an OLS regression.
